@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.2
+
+目录扫描合规修复（**插件功能无变化**：`main.js` 与 1.0.1 逐字节一致，已用构建复现验证）：
+
+- **MANIFEST（Error）**：`manifest.json` 的 `description` 移除「Obsidian」一词（目录规则要求描述中不得出现该词）。
+- **SOURCE CODE（Error）**：仓库补齐**源码** `main.ts` 与构建配置（`package.json` / `esbuild.config.mjs` / `tsconfig.json`），此前仓库里只有打包压缩后的产物 `main.js`，扫描器判定「找不到源码」。现在 `npm run build` 可从 `main.ts` 复现出与发布资产逐字节一致的 `main.js`。
+- **README（Warning）**：README 改为**英文为主**（英文完整说明 + 末尾简短中文摘要），此前中英混排但中文占绝对多数，扫描器判定「没有英文内容」。
+- 未处理：RELEASES 段的 Recommendation（缺少 GitHub artifact attestations）——仅为建议项，不阻塞上架。
+
 ## 1.0.1
 
 - 目录命名合规修复（功能无变化，`main.js` 未改动）：

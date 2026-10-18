@@ -1,0 +1,26 @@
+{
+  "name": "kb-semantic-search",
+  "version": "1.0.2",
+  "description": "Local hybrid semantic search (bge-small-zh vectors + FTS5 full-text + RRF) for your vault, with jump-to-note results.",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc --noEmit --skipLibCheck && node esbuild.config.mjs production"
+  },
+  "keywords": [
+    "semantic-search",
+    "chinese",
+    "bge",
+    "local-ai",
+    "knowledge-base"
+  ],
+  "author": "huxiao",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "builtin-modules": "^4.0.0",
+    "esbuild": "^0.24.0",
+    "obsidian": "^1.8.7",
+    "typescript": "^5.7.0"
+  }
+}

@@ -1,93 +1,111 @@
-# 知识库语义搜索 (KB Semantic Search)
+# KB Semantic Search
 
-在 Obsidian 中进行中文语义搜索：调用**本机自建的本地混合检索服务**，融合向量检索（bge-small-zh）与 FTS5 全文检索（RRF 融合），结果卡片可直接跳转到对应笔记。
+Chinese semantic search inside Obsidian: the plugin calls a **local hybrid retrieval service** that you run yourself, fusing vector search (`bge-small-zh`) with SQLite **FTS5** full-text search via **RRF**, and lets you jump straight to the matching note from the result card.
 
-Chinese semantic search inside Obsidian. This plugin is **frontend only**: it talks to a local retrieval service you run yourself (vector search with `bge-small-zh` + SQLite FTS5 full-text search, fused with RRF).
-
-> ⚠️ **重要依赖 / Important dependency**
-> 本插件不是开箱即用的纯插件，它需要一个运行在 `http://127.0.0.1:8765` 的本地检索服务。该服务不在本插件内，也**不会**被本插件启动或安装。若不运行该服务，插件只能打开面板但无法返回结果。
->
-> This plugin requires a **local HTTP retrieval service** listening on `http://127.0.0.1:8765`. It is not bundled with the plugin and is **not** started by it. Without that service, the search panel opens but returns no results.
+> ⚠️ **Important dependency — this plugin is not self-contained**
+> It requires a **local HTTP retrieval service** listening on `http://127.0.0.1:8765`. That service is **not bundled** with this plugin and is **not** started by it. Without the service running, the search panel opens but returns no results.
 
 ---
 
-## 功能 / Features
+## Features
 
-- 中文语义搜索面板（丝带图标或命令面板 `打开语义搜索面板`）。
-- 混合检索：向量语义召回 + FTS5 关键词召回，RRF 融合排序。
-- 结果卡片：标题、笔记路径、命中片段（关键词高亮）、来源徽标（混合 / 向量 / 全文）、得分与各路排名。
-- 点击结果直接在当前工作区打开对应笔记。
-- 设置项：本地服务地址、返回结果条数（1–50）、目录片段过滤（可选）、连接检查。
-- 命令：`打开语义搜索面板`、`检查本地检索服务状态`（读取 `/health`）。
+- Chinese semantic search panel (ribbon icon, or the command palette entry *Open semantic search panel*).
+- Hybrid retrieval: vector semantic recall + FTS5 keyword recall, fused and re-ranked with RRF.
+- Result cards show the note title, vault path, highlighted snippet, a source badge (hybrid / vector / full-text), the fused score, and each retriever's rank.
+- Click a result to open the corresponding note in the current workspace.
+- Settings: service base URL, number of results (1–50), optional directory filter, and a connection check.
+- Commands: *Open semantic search panel* and *Check local retrieval service status* (reads `/health`).
 
 ---
 
-## 依赖的本地检索服务 / Required local service
+## Required local service
 
-插件只调用以下两个接口 / The plugin calls exactly two endpoints:
+The plugin calls exactly two endpoints:
 
-| 方法 | 路径 | 用途 |
+| Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/health` | 健康检查：检索引擎模式、已索引文档数、最近更新时间（设置中的「测试连接」与「检查本地检索服务状态」命令使用） |
-| `POST` | `/search` | 语义检索，请求体 `{"query": "...", "top_k": 10, "filters": {"dirs": [...]}}` |
+| `GET` | `/health` | Health check: engine mode, indexed document count, last update time (used by *Test connection* and the status command) |
+| `POST` | `/search` | Semantic search; body `{"query": "...", "top_k": 10, "filters": {"dirs": [...]}}` |
 
-服务的进程内脚本为 `scripts/kb_api_server.py`（纯 Python 标准库 `http.server`，仅监听 `127.0.0.1:8765`，默认零第三方 HTTP 依赖），其检索逻辑由 `lib/kb_retrieval`（`KBSearcher` / `KBIndexer`）提供。
+The service is a plain-Python HTTP server listening **only** on `127.0.0.1:8765`, backed by a retrieval library (`KBSearcher` / `KBIndexer`) that owns the vector index, the FTS5 index, and the local embedding model.
 
-启动方式（任选其一，均在你自己的机器上执行）：
+Start it on your own machine (either way):
 
 ```bash
-# 前台调试（首次运行会加载本地语义模型，可能等待 5~15 秒）
+# foreground, for debugging (the first run loads the local embedding model, 5–15s)
 python3 scripts/kb_api_server.py
 
-# 或以常驻服务方式运行（macOS launchd，KeepAlive 崩溃自启）
+# or as a resident service (macOS launchd, auto-restart on crash)
 launchctl load -w launchd/com.kbautomation.kb-api.plist
 ```
 
-确认服务可用：
+Verify it is up:
 
 ```bash
 curl -s http://127.0.0.1:8765/health
 ```
 
-在插件设置中把「本地检索服务地址」填为 `http://127.0.0.1:8765`，点击「测试连接」即可看到引擎与索引概况。
+Then set **Service URL** to `http://127.0.0.1:8765` in the plugin settings and press **Test connection** to see the engine and index summary.
 
 ---
 
-## 安装 / Installation
+## Installation
 
-### 手动安装 / Manual
-1. 下载最新 Release 中的 `main.js`、`manifest.json`、`styles.css`。
-2. 放入 `<你的库>/.obsidian/plugins/kb-semantic-search/` 目录。
-3. 在 Obsidian 设置 → 第三方插件中启用「知识库语义搜索」。
+### Manual
+1. Download `main.js`, `manifest.json`, and `styles.css` from the latest release.
+2. Put them in `<your vault>/.obsidian/plugins/kb-semantic-search/`.
+3. Enable **KB Semantic Search** under Settings → Community plugins.
 
 ### BRAT
-在 BRAT 中添加 beta 插件仓库 `Xiao-HU1987/obsidian-kb-semantic-search`。
+Add the beta plugin repository `Xiao-HU1987/obsidian-kb-semantic-search` in BRAT.
 
-### 社区插件市场 / Community plugins
-本插件通过 Obsidian 社区开发者后台（[community.obsidian.md](https://community.obsidian.md/)）提交至官方插件目录；发布后即可在 Obsidian 的「浏览」中搜索「知识库语义搜索」安装。
+### Community plugins
+This plugin is submitted to the official plugin directory through the Obsidian developer dashboard. Once published, search for **KB Semantic Search** in *Browse → Community plugins*.
 
 ---
 
-## 设置项 / Settings
+## Settings
 
-| 设置 | 说明 | 默认 |
+| Setting | Description | Default |
 | --- | --- | --- |
-| 本地检索服务地址 | 检索服务根地址 | `http://127.0.0.1:8765` |
-| 每次返回结果数 | 结果条数 | `10` |
-| 目录过滤（可选） | 仅在路径包含这些片段（英文逗号分隔）的文档中检索；留空 = 全库 | 空 |
-| 连接检查 | 读取 `/health` 并显示引擎与索引概况 | — |
+| Service URL | Base URL of the retrieval service | `http://127.0.0.1:8765` |
+| Results per query | Number of results returned | `10` |
+| Directory filter (optional) | Only search notes whose path contains one of these fragments (comma-separated); empty = whole vault | empty |
+| Connection check | Reads `/health` and shows the engine and index summary | — |
 
 ---
 
-## 已知限制 / Known limitations & notes
+## Known limitations
 
-- **仅桌面端**：插件通过 `fetch` 访问 `127.0.0.1`，移动端（iOS/Android）与 Obsidian 同步环境无法访问你本机的服务，因此 `isDesktopOnly: true`。
-- **需自备本地服务**：向量模型、索引构建与维护都在服务侧完成，插件不包含模型、不做索引、不下载任何模型权重。
-- 检索结果质量取决于本地索引是否覆盖目标笔记；索引更新由服务侧触发。
-- 服务仅监听回环地址，除本机外不可访问；本插件不向任何远程服务器发送数据。
+- **Desktop only.** The plugin uses `fetch` to reach `127.0.0.1`, which mobile clients cannot reach on your machine — hence `isDesktopOnly: true`.
+- **Bring your own service.** The embedding model, index building, and index maintenance all live in the service; this plugin ships no model, performs no indexing, and downloads nothing.
+- Result quality depends on how well the local index covers your notes; index updates are triggered on the service side.
+- The service binds to the loopback interface only. This plugin sends no data to any remote server.
 
 ---
 
-## 许可 / License
+## Development
+
+```bash
+npm install
+npm run build     # type-check, then bundle main.ts into main.js at the repo root
+npm run dev       # watch mode
+```
+
+`main.ts` is the source of truth; `main.js` is the bundled CommonJS artifact built by esbuild (`format: cjs`, `external: obsidian`, minified for production).
+
+---
+
+## License
 
 MIT © 2026 huxiao
+
+---
+
+## 中文摘要
+
+在 Obsidian 中做中文语义搜索：调用**你本机自建的本地混合检索服务**，融合向量检索（bge-small-zh）与 FTS5 全文检索（RRF 融合），结果卡片可直接跳转到对应笔记。
+
+- **重要依赖**：本插件不是开箱即用的纯插件，它需要 `http://127.0.0.1:8765` 上的本地检索服务；该服务不在插件内、也不会被插件启动。服务未运行时，面板能打开但没有结果。
+- 功能：语义搜索面板、混合检索与 RRF 融合排序、结果卡片（标题/路径/高亮片段/来源徽标/得分）、点击跳转笔记、设置项（服务地址、结果数、目录过滤、连接检查）。
+- 仅桌面端；插件不含模型、不做索引、不下载任何模型权重、不向任何远程服务器发送数据。
