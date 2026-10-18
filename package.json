@@ -1,6 +1,6 @@
 {
   "name": "kb-semantic-search",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Local hybrid semantic search (bge-small-zh vectors + FTS5 full-text + RRF) for your vault, with jump-to-note results.",
   "main": "main.js",
   "scripts": {

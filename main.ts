@@ -428,10 +428,9 @@ export default class KBSemanticPlugin extends Plugin {
   }
 
   async loadSettings(): Promise<void> {
-    // loadData() 返回 any，先落到 unknown 再断言，避免 no-unsafe-assignment
+    // loadData() 返回 any：先落到 unknown，再用 typeof 收窄后合并，全程不做断言、不泄漏 any
     const saved: unknown = await this.loadData();
-    const restored: Partial<KBSettings> =
-      typeof saved === "object" && saved !== null ? (saved as Partial<KBSettings>) : {};
+    const restored: Partial<KBSettings> = typeof saved === "object" && saved !== null ? saved : {};
     this.settings = Object.assign({}, DEFAULT_SETTINGS, restored);
   }
 

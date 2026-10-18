@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.6
+
+v1.0.5 的官方扫描（commit bccd173）只剩 **1 个 Warning**、`Other` 归零、无 Failed/Errors；本次清掉最后一项：
+
+- `main.ts:434`「This assertion is unnecessary since the receiver accepts the original type of the expression.」→ `loadSettings()` 里的 `saved as Partial<KBSettings>` 断言确实多余：`typeof saved === "object"` 已把 `unknown` 收窄为 `object`，而全可选属性的弱类型接受 `object`（已用 `tsc --strict` 实测去掉断言仍可编译），故直接删除该断言。
+- 纯类型层面改动，**构建产物 `main.js` 与 1.0.5 逐字节一致**（类型断言在编译期被擦除）。
+
 ## 1.0.5
 
 官方扫描（v1.0.4，commit 94de8cc）结果：**0 个 Error / Failed**，6 项 Pass（含两项 attestation 与构建逐字节可复现），另剩 3 个 Warnings + 3 个 Other。本次逐条清掉：
