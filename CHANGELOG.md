@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.3
+
+目录扫描安全项修复（**功能表现不变**，但产出代码有真实改动，故版本升级）：
+
+- **SOURCE CODE（Error）**：结果片段的 `snippet.innerHTML = ...` 改为用 DOM API 构建（新增 `renderSnippet`：按 `**词**` 拆分，文本节点 + `<mark>` 元素），消除「Unsafe assignment to innerHTML」与「Do not write to DOM directly using innerHTML/outerHTML property」。
+- 消除两条 Warning：`setTimeout` / `clearTimeout` → `window.setTimeout` / `window.clearTimeout`（弹窗窗口兼容性）。
+- 未处理（均不阻塞上架）：`fetch` 建议改用 Obsidian 内置 `requestUrl`、1.13+ 声明式设置 API（`getSettingDefinitions`）、RELEASES 段的 artifact attestations 建议。
+
 ## 1.0.2
 
 目录扫描合规修复（**插件功能无变化**：`main.js` 与 1.0.1 逐字节一致，已用构建复现验证）：

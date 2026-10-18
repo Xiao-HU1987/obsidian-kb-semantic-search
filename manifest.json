@@ -1,7 +1,7 @@
 {
   "id": "kb-semantic-search",
   "name": "KB Semantic Search",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "minAppVersion": "1.5.0",
   "description": "调用本地混合检索服务（bge-small-zh 向量 + FTS5 全文 + RRF 融合），在笔记库内进行中文语义搜索并跳转笔记.",
   "author": "huxiao",

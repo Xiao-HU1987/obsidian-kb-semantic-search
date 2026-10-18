@@ -69,18 +69,16 @@ interface HealthResponse {
 /* 工具函数                                                             */
 /* ------------------------------------------------------------------ */
 
-function escapeHtml(raw: string): string {
-  return raw
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-/** snippet 先转义再把 **词** 渲染成高亮，杜绝未转义 HTML 注入 */
-function snippetToHtml(snippet: string): string {
-  return escapeHtml(snippet).replace(/\*\*(.+?)\*\*/g, "<mark>$1</mark>");
+/** 把 snippet 里的 **词** 渲染成 <mark> 高亮：全程用 DOM API 构建，不做 HTML 字符串注入 */
+function renderSnippet(parent: HTMLElement, snippet: string): void {
+  snippet.split(/\*\*(.+?)\*\*/g).forEach((part, i) => {
+    if (!part) return;
+    if (i % 2 === 1) {
+      parent.createEl("mark", { text: part });
+    } else {
+      parent.appendChild(document.createTextNode(part));
+    }
+  });
 }
 
 function parseDirs(raw: string): string[] {
@@ -156,7 +154,7 @@ class SearchModal extends Modal {
     if (dirs.length) body.filters = { dirs };
 
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 30_000);
+    const timer = window.setTimeout(() => ctrl.abort(), 30_000);
     try {
       const resp = await fetch(`${settings.apiBase.replace(/\/+$/, "")}/search`, {
         method: "POST",
@@ -173,7 +171,7 @@ class SearchModal extends Modal {
     } catch (err) {
       this.renderError(err);
     } finally {
-      clearTimeout(timer);
+      window.clearTimeout(timer);
       this.searching = false;
     }
   }
@@ -211,7 +209,7 @@ class SearchModal extends Modal {
     card.createDiv({ cls: "kbss-path", text: item.path });
 
     const snippet = card.createDiv({ cls: "kbss-snippet" });
-    snippet.innerHTML = snippetToHtml(item.snippet);
+    renderSnippet(snippet, item.snippet);
 
     const foot = card.createDiv({ cls: "kbss-card-foot" });
     foot.createSpan({
@@ -395,7 +393,7 @@ export default class KBSemanticPlugin extends Plugin {
 
   async fetchHealth(): Promise<HealthResponse> {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 8_000);
+    const timer = window.setTimeout(() => ctrl.abort(), 8_000);
     try {
       const resp = await fetch(`${this.settings.apiBase.replace(/\/+$/, "")}/health`, {
         signal: ctrl.signal,
@@ -403,7 +401,7 @@ export default class KBSemanticPlugin extends Plugin {
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       return (await resp.json()) as HealthResponse;
     } finally {
-      clearTimeout(timer);
+      window.clearTimeout(timer);
     }
   }
 }
