@@ -7,7 +7,6 @@ import {
   requestUrl,
   RequestUrlParam,
   RequestUrlResponse,
-  Setting,
   SettingDefinitionItem,
   TAbstractFile,
   TFile,
@@ -114,7 +113,8 @@ function withTimeout<T>(task: Promise<T>, ms: number): Promise<T> {
       },
       (err) => {
         window.clearTimeout(timer);
-        reject(err);
+        // 拒绝原因必须是 Error：非 Error 的拒绝值会被包一层，满足 prefer-promise-reject-errors
+        reject(err instanceof Error ? err : new Error(String(err)));
       },
     );
   });
@@ -307,8 +307,8 @@ class KBSettingsTab extends PluginSettingTab {
   }
 
   /**
-   * Obsidian 1.13+ 声明式设置 API。返回非空数组时，宿主不再调用下面的 display()；
-   * 低于 1.13 的版本不认识本方法，仍走 display() 的命令式渲染（双轨兼容）。
+   * Obsidian 1.13+ 声明式设置 API。返回非空数组时，宿主按此渲染设置页（本插件不再保留
+   * display() 命令式兜底，故 minAppVersion 已提升至 1.13.0）。
    */
   getSettingDefinitions(): SettingDefinitionItem[] {
     const plugin = this.plugin;
@@ -387,79 +387,6 @@ class KBSettingsTab extends PluginSettingTab {
       },
     ];
   }
-
-  /** 兜底：Obsidian < 1.13 使用（1.13+ 由 getSettingDefinitions 接管，不再执行） */
-  display(): void {
-    const { containerEl } = this;
-    containerEl.empty();
-
-    new Setting(containerEl).setName("本地检索服务地址").addText((text) =>
-      text
-        .setPlaceholder("http://127.0.0.1:8765")
-        .setValue(this.plugin.settings.apiBase)
-        .onChange(async (value) => {
-          this.plugin.settings.apiBase = value.trim() || DEFAULT_SETTINGS.apiBase;
-          await this.plugin.saveSettings();
-        }),
-    );
-
-    new Setting(containerEl)
-      .setName("每次返回结果数")
-      .addSlider((slider) =>
-        slider
-          .setLimits(1, 50, 1)
-          .setValue(this.plugin.settings.topK)
-          .setDynamicTooltip()
-          .onChange(async (value) => {
-            this.plugin.settings.topK = value;
-            await this.plugin.saveSettings();
-          }),
-      );
-
-    new Setting(containerEl)
-      .setName("目录过滤（可选）")
-      .setDesc("只在包含这些目录片段的文档中检索，多个用英文逗号分隔，例如：02-行业知识,98-智能协作中枢。留空表示全库。")
-      .addText((text) =>
-        text
-          .setPlaceholder("留空 = 全库检索")
-          .setValue(this.plugin.settings.dirFilter)
-          .onChange(async (value) => {
-            this.plugin.settings.dirFilter = value;
-            await this.plugin.saveSettings();
-          }),
-      );
-
-    new Setting(containerEl)
-      .setName("连接检查")
-      .setDesc("读取服务健康状态：检索引擎模式、已索引文档数、最近更新时间。")
-      .addButton((button) =>
-        button.setButtonText("测试连接").onClick(async () => {
-          button.setDisabled(true);
-          button.setButtonText("检查中…");
-          try {
-            const health = await this.plugin.fetchHealth();
-            new Notice(
-              `连接正常：${health.engine.index_engine} 引擎 · ${health.index.docs} 篇文档`,
-              6000,
-            );
-            this.display();
-            const state = containerEl.createDiv({ cls: "kbss-health-ok" });
-            state.setText(
-              `连接正常：引擎 ${health.engine.index_engine}（向量库 ${health.engine.lance_ready ? "就绪" : "未就绪"} / 全文 ${health.engine.fts_ready ? "就绪" : "未就绪"}），已索引 ${health.index.docs} 篇，最近更新 ${health.index.updated_at ?? "未知"}`,
-            );
-          } catch (err) {
-            new Notice("连接失败，请确认本地服务已启动", 6000);
-            this.display();
-            containerEl
-              .createDiv({ cls: "kbss-health-err" })
-              .setText(`连接失败：${String((err as Error).message ?? err)}。请确认 launchd 服务 com.kbautomation.kb-api 正在运行。`);
-          } finally {
-            button.setDisabled(false);
-            button.setButtonText("测试连接");
-          }
-        }),
-      );
-  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -501,7 +428,11 @@ export default class KBSemanticPlugin extends Plugin {
   }
 
   async loadSettings(): Promise<void> {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    // loadData() 返回 any，先落到 unknown 再断言，避免 no-unsafe-assignment
+    const saved: unknown = await this.loadData();
+    const restored: Partial<KBSettings> =
+      typeof saved === "object" && saved !== null ? (saved as Partial<KBSettings>) : {};
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, restored);
   }
 
   async saveSettings(): Promise<void> {

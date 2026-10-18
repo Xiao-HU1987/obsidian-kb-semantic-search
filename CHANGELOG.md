@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.5
+
+官方扫描（v1.0.4，commit 94de8cc）结果：**0 个 Error / Failed**，6 项 Pass（含两项 attestation 与构建逐字节可复现），另剩 3 个 Warnings + 3 个 Other。本次逐条清掉：
+
+- **Warnings（medium）**：
+  - `main.ts:117`「Expected the Promise rejection reason to be an Error.」→ `withTimeout` 的拒绝值改为 `err instanceof Error ? err : new Error(String(err))`（`prefer-promise-reject-errors`）。
+  - `main.ts:504`「Unsafe assignment of an `error` or `any` typed value」→ `loadSettings()` 先把 `loadData()` 的返回值落到 `unknown` 再断言为 `Partial<KBSettings>`（`no-unsafe-assignment`）。
+  - `package.json:21`「`builtin-modules` should be replaced with an alternative package」→ 移除该 devDependency，改用 esbuild 的 `platform: "node"` 自动外部化 Node 内置模块（构建产物不受影响）。
+- **Other（info，均来自已废弃的 `display()` 命令式设置页）**：`display` 已废弃（Since 1.13.0，改用 `getSettingDefinitions`）、`setDynamicTooltip` 已废弃 → 删除 `display()` 兜底，设置页完全改用声明式 API。相应地 `manifest.json` 的 **`minAppVersion` 提升为 1.13.0**（`versions.json` 已同步）。
+- 功能表现不变；`main.js` 构建产物与源码仍逐字节可复现。
+
 ## 1.0.4
 
 目录扫描建议项落地（**功能表现不变**，但逻辑确有改动，故版本升级）：
