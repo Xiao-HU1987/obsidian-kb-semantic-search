@@ -1,9 +1,9 @@
 {
   "id": "kb-semantic-search",
-  "name": "知识库语义搜索",
-  "version": "1.0.0",
+  "name": "KB Semantic Search",
+  "version": "1.0.1",
   "minAppVersion": "1.5.0",
-  "description": "调用本地混合检索服务（bge-small-zh 向量 + FTS5 全文 + RRF 融合），在 Obsidian 内进行中文语义搜索并跳转笔记。",
+  "description": "调用本地混合检索服务（bge-small-zh 向量 + FTS5 全文 + RRF 融合），在 Obsidian 内进行中文语义搜索并跳转笔记.",
   "author": "huxiao",
   "authorUrl": "https://github.com/Xiao-HU1987",
   "isDesktopOnly": true

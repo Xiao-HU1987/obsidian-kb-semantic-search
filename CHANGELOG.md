@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1
+
+- 目录命名合规修复（功能无变化，`main.js` 未改动）：
+  - `manifest.json` 的 `name` 由中文「知识库语义搜索」改为英文 `KB Semantic Search`（Obsidian 社区目录要求插件名使用英文）。
+  - `description` 结尾标点由「。」改为 `.`（目录要求描述以句号结尾）。
+
 ## 1.0.0
 
 - 首版发布。
