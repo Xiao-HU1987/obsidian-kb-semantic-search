@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.4
+
+目录扫描建议项落地（**功能表现不变**，但逻辑确有改动，故版本升级）：
+
+- **`fetch` → Obsidian 内置 `requestUrl`**（消除 2 条 Warning）：请求改走 Electron 侧，不再受渲染进程 CORS 限制；因 `requestUrl` 不支持中断，新增 `withTimeout` 做 30 秒（搜索）/ 8 秒（健康检查）超时竞速，超时错误沿用 `AbortError` 以复用既有提示分支。
+- **连接失败提示口径放宽**：`requestUrl` 的报错文案与浏览器 `fetch` 不同（不再是 `Failed to fetch`），改为匹配 `net::` / `ERR_` / `ECONNREFUSED` 等特征串，避免「无法连接本地检索服务」的友好提示失效。
+- **声明式设置 API**（消除 1 条 Warning + 1 条 Recommendation）：设置页新增 `getSettingDefinitions()`（1.13+），保留 `display()` 作为 <1.13 的命令式兜底；`apiBase` 增加非空与 http(s) 前缀校验，健康检查结果改为就地更新，不再整页重绘。
+- **GitHub Actions 发布流水线 + 构建溯源证明**（消除 RELEASES 段 Recommendation）：新增 `.github/workflows/release.yml`，推送 tag 即自动 `npm ci` → `npm run build` → 校验 tag 与 `manifest.json` 版本一致、构建产物与仓库 `main.js` 逐字节一致 → 用 `actions/attest-build-provenance` 为三个资产生成 provenance attestation → 创建 Release 并上传资产。**此后请用打 tag 触发发布，不要再手工 `gh release create`（否则资产无 attestation）。**
+
 ## 1.0.3
 
 目录扫描安全项修复（**功能表现不变**，但产出代码有真实改动，故版本升级）：

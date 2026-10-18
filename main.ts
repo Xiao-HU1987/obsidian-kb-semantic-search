@@ -4,7 +4,11 @@ import {
   Notice,
   Plugin,
   PluginSettingTab,
+  requestUrl,
+  RequestUrlParam,
+  RequestUrlResponse,
   Setting,
+  SettingDefinitionItem,
   TAbstractFile,
   TFile,
 } from "obsidian";
@@ -94,6 +98,40 @@ const SOURCE_LABEL: Record<string, string> = {
   fts: "全文",
 };
 
+/** requestUrl 是 Electron 侧请求，不受 CORS 限制，也不支持中断；这里用超时竞速模拟中断。 */
+function withTimeout<T>(task: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      const err = new Error(`请求超时（${ms / 1000} 秒）`);
+      // 复用已有的「检索超时」提示分支
+      err.name = "AbortError";
+      reject(err);
+    }, ms);
+    task.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        window.clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
+
+/** 统一封装：Obsidian 内置 requestUrl + 超时 + 手动状态码判断（throw:false 便于自取错误正文） */
+async function kbRequest(param: RequestUrlParam, timeoutMs: number): Promise<RequestUrlResponse> {
+  const resp = await withTimeout(requestUrl({ ...param, throw: false }), timeoutMs);
+  if (resp.status >= 400) {
+    throw new Error(`HTTP ${resp.status} ${resp.text ?? ""}`.trim());
+  }
+  return resp;
+}
+
+/** 连接类失败的特征串（requestUrl 抛错文案与浏览器 fetch 不同，不能再只判 "Failed to fetch"） */
+const CONNECTION_ERR_PATTERN = /Failed to fetch|net::|ERR_|ECONNREFUSED|ECONNRESET|ENOTFOUND|ETIMEDOUT|socket hang up/i;
+
 /* ------------------------------------------------------------------ */
 /* 搜索面板                                                             */
 /* ------------------------------------------------------------------ */
@@ -153,25 +191,21 @@ class SearchModal extends Modal {
     const dirs = parseDirs(settings.dirFilter);
     if (dirs.length) body.filters = { dirs };
 
-    const ctrl = new AbortController();
-    const timer = window.setTimeout(() => ctrl.abort(), 30_000);
     try {
-      const resp = await fetch(`${settings.apiBase.replace(/\/+$/, "")}/search`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-        signal: ctrl.signal,
-      });
-      if (!resp.ok) {
-        const errText = await resp.text().catch(() => "");
-        throw new Error(`HTTP ${resp.status} ${errText}`);
-      }
-      const data = (await resp.json()) as SearchResponse;
+      const resp = await kbRequest(
+        {
+          url: `${settings.apiBase.replace(/\/+$/, "")}/search`,
+          method: "POST",
+          contentType: "application/json",
+          body: JSON.stringify(body),
+        },
+        30_000,
+      );
+      const data = resp.json as SearchResponse;
       this.renderResults(data);
     } catch (err) {
       this.renderError(err);
     } finally {
-      window.clearTimeout(timer);
       this.searching = false;
     }
   }
@@ -245,7 +279,7 @@ class SearchModal extends Modal {
     const e = err as { name?: string; message?: string };
     if (e?.name === "AbortError") {
       box.createDiv({ text: "检索超时（30 秒）。如果是首次启动后立刻搜索，请稍候片刻再试。" });
-    } else if (String(e?.message).includes("Failed to fetch")) {
+    } else if (CONNECTION_ERR_PATTERN.test(String(e?.message ?? err))) {
       box.createDiv({
         text: "无法连接本地检索服务（127.0.0.1:8765）。",
       });
@@ -272,6 +306,89 @@ class KBSettingsTab extends PluginSettingTab {
     this.plugin = plugin;
   }
 
+  /**
+   * Obsidian 1.13+ 声明式设置 API。返回非空数组时，宿主不再调用下面的 display()；
+   * 低于 1.13 的版本不认识本方法，仍走 display() 的命令式渲染（双轨兼容）。
+   */
+  getSettingDefinitions(): SettingDefinitionItem[] {
+    const plugin = this.plugin;
+    return [
+      {
+        name: "本地检索服务地址",
+        desc: "本地混合检索服务的地址，默认 http://127.0.0.1:8765。",
+        control: {
+          type: "text",
+          key: "apiBase",
+          placeholder: DEFAULT_SETTINGS.apiBase,
+          defaultValue: DEFAULT_SETTINGS.apiBase,
+          validate: (value: string) => {
+            const v = String(value ?? "").trim();
+            if (!v) return "地址不能为空";
+            if (!/^https?:\/\//i.test(v)) return "请填写以 http:// 或 https:// 开头的地址";
+          },
+        },
+      },
+      {
+        name: "每次返回结果数",
+        desc: `检索返回的结果条数（1–50），当前默认 ${DEFAULT_SETTINGS.topK} 条。`,
+        control: {
+          type: "slider",
+          key: "topK",
+          min: 1,
+          max: 50,
+          step: 1,
+          defaultValue: DEFAULT_SETTINGS.topK,
+        },
+      },
+      {
+        name: "目录过滤（可选）",
+        desc: "只在包含这些目录片段的文档中检索，多个用英文逗号分隔，例如：02-行业知识,98-智能协作中枢。留空表示全库。",
+        control: {
+          type: "text",
+          key: "dirFilter",
+          placeholder: "留空 = 全库检索",
+          defaultValue: "",
+        },
+      },
+      {
+        name: "连接检查",
+        desc: "读取服务健康状态：检索引擎模式、已索引文档数、最近更新时间。",
+        render: (setting) => {
+          const state = setting.infoEl.createDiv({ cls: "kbss-health-state" });
+          setting.addButton((button) =>
+            button.setButtonText("测试连接").onClick(async () => {
+              button.setDisabled(true);
+              button.setButtonText("检查中…");
+              state.removeClass("kbss-health-ok", "kbss-health-err");
+              state.empty();
+              try {
+                const health = await plugin.fetchHealth();
+                new Notice(
+                  `连接正常：${health.engine.index_engine} 引擎 · ${health.index.docs} 篇文档`,
+                  6000,
+                );
+                state.addClass("kbss-health-ok");
+                state.setText(
+                  `连接正常：引擎 ${health.engine.index_engine}（向量库 ${health.engine.lance_ready ? "就绪" : "未就绪"} / 全文 ${health.engine.fts_ready ? "就绪" : "未就绪"}），已索引 ${health.index.docs} 篇，最近更新 ${health.index.updated_at ?? "未知"}`,
+                );
+              } catch (err) {
+                new Notice("连接失败，请确认本地服务已启动", 6000);
+                state.addClass("kbss-health-err");
+                state.setText(
+                  `连接失败：${String((err as Error)?.message ?? err)}。请确认 launchd 服务 com.kbautomation.kb-api 正在运行。`,
+                );
+              } finally {
+                button.setDisabled(false);
+                button.setButtonText("测试连接");
+              }
+            }),
+          );
+        },
+      },
+    ];
+  }
+
+  /** 兜底：Obsidian < 1.13 使用（1.13+ 由 getSettingDefinitions 接管，不再执行） */
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
@@ -392,16 +509,10 @@ export default class KBSemanticPlugin extends Plugin {
   }
 
   async fetchHealth(): Promise<HealthResponse> {
-    const ctrl = new AbortController();
-    const timer = window.setTimeout(() => ctrl.abort(), 8_000);
-    try {
-      const resp = await fetch(`${this.settings.apiBase.replace(/\/+$/, "")}/health`, {
-        signal: ctrl.signal,
-      });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      return (await resp.json()) as HealthResponse;
-    } finally {
-      window.clearTimeout(timer);
-    }
+    const resp = await kbRequest(
+      { url: `${this.settings.apiBase.replace(/\/+$/, "")}/health` },
+      8_000,
+    );
+    return resp.json as HealthResponse;
   }
 }
