@@ -1,0 +1,163 @@
+/* 知识库语义搜索插件样式 */
+
+.kbss-search-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.kbss-input {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
+.kbss-btn {
+  padding: 6px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.kbss-status {
+  margin-bottom: 8px;
+  min-height: 20px;
+}
+
+.kbss-results {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 56vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.kbss-card {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  background: var(--background-secondary);
+  transition: border-color 0.15s ease, transform 0.05s ease;
+}
+
+.kbss-card:hover {
+  border-color: var(--interactive-accent);
+}
+
+.kbss-card:active {
+  transform: scale(0.995);
+}
+
+.kbss-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.kbss-title {
+  font-weight: 600;
+  font-size: var(--font-ui-medium);
+  color: var(--text-normal);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kbss-badge {
+  flex-shrink: 0;
+  font-size: var(--font-ui-smaller);
+  line-height: 1;
+  padding: 3px 7px;
+  border-radius: 10px;
+  color: #fff;
+}
+
+.kbss-src-hybrid {
+  background: #7c4dff;
+}
+
+.kbss-src-vector {
+  background: #2f7bd6;
+}
+
+.kbss-src-fts {
+  background: #2e9e5b;
+}
+
+.kbss-path {
+  margin-top: 3px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  word-break: break-all;
+}
+
+.kbss-snippet {
+  margin-top: 6px;
+  font-size: var(--font-ui-small);
+  color: var(--text-normal);
+  line-height: 1.55;
+}
+
+.kbss-snippet mark {
+  background: var(--text-highlight-bg);
+  color: var(--text-normal);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.kbss-card-foot {
+  display: flex;
+  gap: 14px;
+  margin-top: 7px;
+  flex-wrap: wrap;
+}
+
+.kbss-meta {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+
+.kbss-hint {
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+}
+
+.kbss-empty {
+  padding: 24px 0;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
+.kbss-error-box {
+  border: 1px solid var(--text-error);
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: var(--text-error);
+  font-size: var(--font-ui-small);
+  line-height: 1.6;
+}
+
+.kbss-error-detail {
+  margin-top: 6px;
+  color: var(--text-muted);
+}
+
+.kbss-health-ok {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--background-secondary);
+  font-size: var(--font-ui-small);
+  color: var(--text-normal);
+}
+
+.kbss-health-err {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: var(--font-ui-small);
+  color: var(--text-error);
+}
